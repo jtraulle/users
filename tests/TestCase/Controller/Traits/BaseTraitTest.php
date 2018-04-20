@@ -13,6 +13,7 @@ namespace CakeDC\Users\Test\TestCase\Controller\Traits;
 
 use Cake\Event\Event;
 use Cake\Mailer\Email;
+use Cake\ORM\Entity;
 use Cake\ORM\TableRegistry;
 use Cake\TestSuite\TestCase;
 use PHPUnit_Framework_MockObject_RuntimeException;
@@ -46,7 +47,7 @@ abstract class BaseTraitTest extends TestCase
     {
         parent::setUp();
         $traitMockMethods = array_unique(array_merge(['getUsersTable'], $this->traitMockMethods));
-        $this->table = TableRegistry::get('CakeDC/Users.Users');
+        $this->table = TableRegistry::getTableLocator()->get('CakeDC/Users.Users');
         try {
             $this->Trait = $this->getMockBuilder($this->traitClassName)
                     ->setMethods($traitMockMethods)
@@ -95,7 +96,7 @@ abstract class BaseTraitTest extends TestCase
      */
     protected function _mockSession($attributes)
     {
-        $session = new \Cake\Network\Session();
+        $session = new \Cake\Http\Session();
 
         foreach ($attributes as $field => $value) {
             $session->write($field, $value);
@@ -200,12 +201,17 @@ abstract class BaseTraitTest extends TestCase
      * mock utility
      *
      * @param Event $event event
+     * @param array $result array of data
      * @return void
      */
-    protected function _mockDispatchEvent(Event $event = null)
+    protected function _mockDispatchEvent(Event $event = null, $result = [])
     {
         if (is_null($event)) {
             $event = new Event('cool-name-here');
+        }
+
+        if (!empty($result)) {
+            $event->result = new Entity($result);
         }
         $this->Trait->expects($this->any())
                 ->method('dispatchEvent')

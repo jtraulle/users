@@ -19,9 +19,9 @@ use CakeDC\Users\Exception\UserNotActiveException;
 use Cake\Controller\ComponentRegistry;
 use Cake\Core\Configure;
 use Cake\Event\Event;
+use Cake\Http\Response;
 use Cake\Http\ServerRequest;
 use Cake\Network\Request;
-use Cake\Network\Response;
 use Cake\ORM\TableRegistry;
 use Cake\TestSuite\TestCase;
 use ReflectionClass;
@@ -47,7 +47,7 @@ class SocialAuthenticateTest extends TestCase
         $request = new ServerRequest();
         $response = new Response();
 
-        $this->Table = TableRegistry::get('CakeDC/Users.Users');
+        $this->Table = TableRegistry::getTableLocator()->get('CakeDC/Users.Users');
 
         $this->Token = $this->getMockBuilder('League\OAuth2\Client\Token\AccessToken')
             ->setMethods(['getToken', 'getExpires'])
@@ -117,7 +117,7 @@ class SocialAuthenticateTest extends TestCase
                 'facebook' => [
                     'className' => 'League\OAuth2\Client\Provider\Facebook',
                     'options' => [
-                        'graphApiVersion' => 'v2.5',
+                        'graphApiVersion' => 'v2.8',
                         'redirectUri' => 'http://example.com/auth/facebook',
                     ]
                 ]
@@ -139,7 +139,7 @@ class SocialAuthenticateTest extends TestCase
                 'facebook' => [
                     'className' => 'missing',
                     'options' => [
-                        'graphApiVersion' => 'v2.5',
+                        'graphApiVersion' => 'v2.8',
                         'redirectUri' => 'http://example.com/auth/facebook',
                     ]
                 ]
@@ -240,7 +240,7 @@ class SocialAuthenticateTest extends TestCase
         $this->SocialAuthenticate = $this->_getSocialAuthenticateMockMethods(['_authenticate',
             '_getProviderName', '_mapUser', '_touch', '_validateConfig']);
 
-        $session = $this->getMockBuilder('Cake\Network\Session')
+        $session = $this->getMockBuilder('Cake\Http\Session')
             ->setMethods(['read', 'delete'])
             ->getMock();
         $session->expects($this->once())
@@ -253,10 +253,10 @@ class SocialAuthenticateTest extends TestCase
             ->with('Users.social');
 
         $this->Request = $this->getMockBuilder('Cake\Network\Request')
-            ->setMethods(['session'])
+            ->setMethods(['getSession'])
             ->getMock();
         $this->Request->expects($this->any())
-            ->method('session')
+            ->method('getSession')
             ->will($this->returnValue($session));
 
         $this->SocialAuthenticate->expects($this->once())

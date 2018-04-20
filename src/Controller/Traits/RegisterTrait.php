@@ -14,8 +14,8 @@ namespace CakeDC\Users\Controller\Traits;
 use CakeDC\Users\Controller\Component\UsersAuthComponent;
 use Cake\Core\Configure;
 use Cake\Datasource\EntityInterface;
-use Cake\Network\Exception\NotFoundException;
-use Cake\Network\Response;
+use Cake\Http\Exception\NotFoundException;
+use Cake\Http\Response;
 
 /**
  * Covers registration features and email token validation
@@ -63,8 +63,15 @@ trait RegisterTrait
         ]);
 
         if ($event->result instanceof EntityInterface) {
-            if ($userSaved = $usersTable->register($user, $event->result->toArray(), $options)) {
+            $data = $event->result->toArray();
+            $data['password'] = $requestData['password']; //since password is a hidden property
+            if ($userSaved = $usersTable->register($user, $data, $options)) {
                 return $this->_afterRegister($userSaved);
+            } else {
+                $this->set(compact('user'));
+                $this->Flash->error(__d('CakeDC/Users', 'The user could not be saved'));
+
+                return;
             }
         }
         if ($event->isStopped()) {

@@ -17,6 +17,7 @@ Documentation
 * [SuperuserAuthorize](https://github.com/CakeDC/auth/blob/master/Docs/Documentation/SuperuserAuthorize.md)
 * [ApiKeyAuthenticate](https://github.com/CakeDC/auth/blob/master/Docs/Documentation/ApiKeyAuthenticate.md)
 * [SocialAuthenticate](Documentation/SocialAuthenticate.md)
+* [Google Authenticator](Documentation/Google-Two-Factor-Authenticator.md)
 * [UserHelper](Documentation/UserHelper.md)
 * [Events](Documentation/Events.md)
 * [Extending the Plugin](Documentation/Extending-the-Plugin.md)
@@ -26,5 +27,6 @@ Migration guides
 ----------------
 
 * [4.x to 5.0](Documentation/Migration/4.x-5.0.md)
+* [6.x to 7.0](Documentation/Migration/6.x-7.0.md)
 
 

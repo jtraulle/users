@@ -11,10 +11,12 @@
 
 namespace CakeDC\Users\Controller\Traits;
 
+use CakeDC\Users\Controller\Component\UsersAuthComponent;
 use CakeDC\Users\Exception\UserNotActiveException;
 use CakeDC\Users\Exception\UserNotFoundException;
 use CakeDC\Users\Exception\WrongPasswordException;
 use Cake\Core\Configure;
+use Cake\Log\Log;
 use Cake\Validation\Validator;
 use Exception;
 
@@ -42,16 +44,16 @@ trait PasswordManagementTrait
             //@todo add to the documentation: list of routes used
             $redirect = Configure::read('Users.Profile.route');
         } else {
-            $user->id = $this->request->session()->read(Configure::read('Users.Key.Session.resetPasswordUserId'));
+            $user->id = $this->request->getSession()->read(Configure::read('Users.Key.Session.resetPasswordUserId'));
             $validatePassword = false;
             if (!$user->id) {
                 $this->Flash->error(__d('CakeDC/Users', 'User was not found'));
-                $this->redirect($this->Auth->config('loginAction'));
+                $this->redirect($this->Auth->getConfig('loginAction'));
 
                 return;
             }
             //@todo add to the documentation: list of routes used
-            $redirect = $this->Auth->config('loginAction');
+            $redirect = $this->Auth->getConfig('loginAction');
         }
         $this->set('validatePassword', $validatePassword);
         if ($this->request->is('post')) {
@@ -65,11 +67,15 @@ trait PasswordManagementTrait
                     $this->request->getData(),
                     ['validate' => $validator]
                 );
-                if ($user->errors()) {
+                if ($user->getErrors()) {
                     $this->Flash->error(__d('CakeDC/Users', 'Password could not be changed'));
                 } else {
                     $user = $this->getUsersTable()->changePassword($user);
                     if ($user) {
+                        $event = $this->dispatchEvent(UsersAuthComponent::EVENT_AFTER_CHANGE_PASSWORD, ['user' => $user]);
+                        if (!empty($event) && is_array($event->result)) {
+                            return $this->redirect($event->result);
+                        }
                         $this->Flash->success(__d('CakeDC/Users', 'Password has been changed successfully'));
 
                         return $this->redirect($redirect);
@@ -80,9 +86,10 @@ trait PasswordManagementTrait
             } catch (UserNotFoundException $exception) {
                 $this->Flash->error(__d('CakeDC/Users', 'User was not found'));
             } catch (WrongPasswordException $wpe) {
-                $this->Flash->error(__d('CakeDC/Users', '{0}', $wpe->getMessage()));
+                $this->Flash->error($wpe->getMessage());
             } catch (Exception $exception) {
                 $this->Flash->error(__d('CakeDC/Users', 'Password could not be changed'));
+                $this->log($exception->getMessage());
             }
         }
         $this->set(compact('user'));
@@ -103,7 +110,7 @@ trait PasswordManagementTrait
     /**
      * Reset password
      *
-     * @return void|\Cake\Network\Response
+     * @return void|\Cake\Http\Response
      */
     public function requestResetPassword()
     {
@@ -136,6 +143,7 @@ trait PasswordManagementTrait
             $this->Flash->error(__d('CakeDC/Users', 'The user is not active'));
         } catch (Exception $exception) {
             $this->Flash->error(__d('CakeDC/Users', 'Token could not be reset'));
+            $this->log($exception->getMessage());
         }
     }
 
@@ -161,7 +169,7 @@ trait PasswordManagementTrait
                 $message = __d('CakeDC/Users', 'Google Authenticator token was successfully reset');
                 $this->Flash->success($message, 'default');
             } catch (\Exception $e) {
-                $message = __d('CakeDC/Users', $e->getMessage());
+                $message = $e->getMessage();
                 $this->Flash->error($message, 'default');
             }
         }

@@ -4,6 +4,37 @@ Changelog
 Releases for CakePHP 3
 -------------
 
+* 7.0.0
+  * Removed deprecations for CakePHP 3.6
+  * Added a new `UsersAuthComponent::EVENT_AFTER_CHANGE_PASSWORD`
+  * Updated docs
+
+* 6.0.0
+  * Removed deprecations and orWhere usage
+  * Amazon login implemented
+  * Fixed issues with login via twitter
+  * Updated Facebook Graph version to 2.8
+  * Fixed flash error messages on logic
+  * Added link social account feature for twitter
+  * Switched to codecov  
+
+* 5.2.0
+  * Compatible with 3.5, deprecations will be removed in next major version of the plugin
+  * Username is now custom in SocialBehavior
+  * Better handling of the RememberMe checkbox
+  * Updated CakeDC/Auth to use ^2.0
+  * Use of UsersMailer class, and allow override of the emails sent by the plugin
+  * Better token generation via randomBytes
+  * Improved documentation
+  * Fixed bugs reported
+
+* 5.1.0
+  * New resend validation method in RegisterBehavior
+  * Allow upgrade to CakePHP 3.5.x
+  * New feature connect social account
+  * New polish translations
+  * Fixed bugs reported
+
 * 5.0.3
   * Implemented event dispatching on social login
   * Fixed bugs reported

@@ -1,7 +1,8 @@
 CakeDC Users Plugin
 ===================
 
-[![Bake Status](https://secure.travis-ci.org/CakeDC/users.png?branch=master)](http://travis-ci.org/CakeDC/users)
+[![Build Status](https://secure.travis-ci.org/CakeDC/users.png?branch=master)](http://travis-ci.org/CakeDC/users)
+[![Coverage Status](https://img.shields.io/codecov/c/gh/CakeDC/users.svg?style=flat-square)](https://codecov.io/gh/CakeDC/users)
 [![Downloads](https://poser.pugx.org/CakeDC/users/d/total.png)](https://packagist.org/packages/CakeDC/users)
 [![Latest Version](https://poser.pugx.org/CakeDC/users/v/stable.png)](https://packagist.org/packages/CakeDC/users)
 [![License](https://poser.pugx.org/CakeDC/users/license.svg)](https://packagist.org/packages/CakeDC/users)
@@ -11,12 +12,12 @@ Versions and branches
 
 | CakePHP | CakeDC Users Plugin | Tag   | Notes |
 | :-------------: | :------------------------: | :--:  | :---- |
-| 2.x             | [2.x](https://github.com/cakedc/users/tree/2.x)                     | 2.1.2 | Note CakePHP 2.7 is currently not supported, we are working on it now |
-| 3.4+             | [master](https://github.com/cakedc/users/tree/master)                      | 5.0.3 | stable |
-| 3.4+             | [develop](https://github.com/cakedc/users/tree/develop)                      | - | unstable |
-| 3.0             | [3.0.x](https://github.com/cakedc/users/tree/3.0.x)                      | 3.0.0 | stable |
-| 3.1             | [3.1.x](https://github.com/cakedc/users/tree/3.1.x)                      | 3.1.0 | stable |
+| ^3.6             | [master](https://github.com/cakedc/users/tree/master)                      | 7.0.0 | stable |
+| ^3.6             | [develop](https://github.com/cakedc/users/tree/develop)                      | - | unstable |
+| 3.5             | [6.x](https://github.com/cakedc/users/tree/6.x)                      | 6.0.1 | stable |
+| 3.4             | [5.x](https://github.com/cakedc/users/tree/5.x)                      | 5.2.0 | stable |
 | 3.3             | [4.x](https://github.com/cakedc/users/tree/4.x)                      | 4.2.0 | stable |
+| 2.x             | [2.x](https://github.com/cakedc/users/tree/2.x)                     | 2.2.0 |stable |
 
 The **Users** plugin is back!
 
@@ -45,7 +46,7 @@ Another decision made was limiting the plugin dependencies on other packages as 
 Requirements
 ------------
 
-* CakePHP 3.4.0+
+* CakePHP 3.6.0+
 * PHP 5.6+
 
 Documentation

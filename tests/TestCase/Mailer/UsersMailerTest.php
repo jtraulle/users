@@ -39,12 +39,12 @@ class UsersMailerTest extends TestCase
     {
         parent::setUp();
         $this->Email = $this->getMockBuilder('Cake\Mailer\Email')
-            ->setMethods(['to', 'setSubject', 'setViewVars', 'setTemplate'])
+            ->setMethods(['setTo', 'setSubject', 'setViewVars', 'setTemplate'])
             ->getMock();
 
         $this->UsersMailer = $this->getMockBuilder('CakeDC\Users\Mailer\UsersMailer')
             ->setConstructorArgs([$this->Email])
-            ->setMethods(['to', 'setSubject', 'setViewVars', 'setTemplate'])
+            ->setMethods(['setTo', 'setSubject', 'setViewVars', 'setTemplate'])
             ->getMock();
     }
 
@@ -67,7 +67,7 @@ class UsersMailerTest extends TestCase
      */
     public function testValidation()
     {
-        $table = TableRegistry::get('CakeDC/Users.Users');
+        $table = TableRegistry::getTableLocator()->get('CakeDC/Users.Users');
         $data = [
             'first_name' => 'FirstName',
             'email' => 'test@example.com',
@@ -75,13 +75,13 @@ class UsersMailerTest extends TestCase
         ];
         $user = $table->newEntity($data);
         $this->UsersMailer->expects($this->once())
-            ->method('to')
+            ->method('setTo')
             ->with($user['email'])
             ->will($this->returnValue($this->Email));
 
         $this->Email->expects($this->once())
             ->method('setSubject')
-            ->with('FirstName, Validate your Account')
+            ->with('FirstName, Your account validation link')
             ->will($this->returnValue($this->Email));
 
         $this->Email->expects($this->once())
@@ -89,49 +89,7 @@ class UsersMailerTest extends TestCase
             ->with($data)
             ->will($this->returnValue($this->Email));
 
-        $this->Email->expects($this->once())
-            ->method('setTemplate')
-            ->with('CakeDC/Users.validation')
-            ->will($this->returnValue($this->Email));
-
-        $this->invokeMethod($this->UsersMailer, 'validation', [$user, 'Validate your Account']);
-    }
-
-    /**
-     * test sendValidationEmail including 'template'
-     *
-     * @return void
-     */
-    public function testValidationWithTemplate()
-    {
-        $table = TableRegistry::get('CakeDC/Users.Users');
-        $data = [
-            'first_name' => 'FirstName',
-            'email' => 'test@example.com',
-            'token' => '12345'
-        ];
-        $user = $table->newEntity($data);
-        $this->UsersMailer->expects($this->once())
-            ->method('to')
-            ->with($user['email'])
-            ->will($this->returnValue($this->Email));
-
-        $this->Email->expects($this->once())
-            ->method('setSubject')
-            ->with('FirstName, Validate your Account')
-            ->will($this->returnValue($this->Email));
-
-        $this->Email->expects($this->once())
-            ->method('setViewVars')
-            ->with($data)
-            ->will($this->returnValue($this->Email));
-
-        $this->Email->expects($this->once())
-            ->method('setTemplate')
-            ->with('myTemplate')
-            ->will($this->returnValue($this->Email));
-
-        $this->invokeMethod($this->UsersMailer, 'validation', [$user, 'Validate your Account', 'myTemplate']);
+        $this->invokeMethod($this->UsersMailer, 'validation', [$user]);
     }
 
     /**
@@ -141,11 +99,11 @@ class UsersMailerTest extends TestCase
      */
     public function testSocialAccountValidation()
     {
-        $social = TableRegistry::get('CakeDC/Users.SocialAccounts')
+        $social = TableRegistry::getTableLocator()->get('CakeDC/Users.SocialAccounts')
             ->get('00000000-0000-0000-0000-000000000001', ['contain' => 'Users']);
 
         $this->UsersMailer->expects($this->once())
-            ->method('to')
+            ->method('setTo')
             ->with('user-1@test.com')
             ->will($this->returnValue($this->Email));
 
@@ -169,7 +127,7 @@ class UsersMailerTest extends TestCase
      */
     public function testResetPassword()
     {
-        $table = TableRegistry::get('CakeDC/Users.Users');
+        $table = TableRegistry::getTableLocator()->get('CakeDC/Users.Users');
         $data = [
             'first_name' => 'FirstName',
             'email' => 'test@example.com',
@@ -177,7 +135,7 @@ class UsersMailerTest extends TestCase
         ];
         $user = $table->newEntity($data);
         $this->UsersMailer->expects($this->once())
-            ->method('to')
+            ->method('setTo')
             ->with($user['email'])
             ->will($this->returnValue($this->Email));
 
@@ -191,12 +149,7 @@ class UsersMailerTest extends TestCase
             ->with($data)
             ->will($this->returnValue($this->Email));
 
-        $this->Email->expects($this->once())
-            ->method('setTemplate')
-            ->with('myTemplate')
-            ->will($this->returnValue($this->Email));
-
-        $this->invokeMethod($this->UsersMailer, 'resetPassword', [$user, 'myTemplate']);
+        $this->invokeMethod($this->UsersMailer, 'resetPassword', [$user]);
     }
 
     /**

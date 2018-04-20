@@ -46,18 +46,16 @@ class UsersTableTest extends TestCase
     public function setUp()
     {
         parent::setUp();
-        $this->Users = TableRegistry::get('CakeDC/Users.Users');
+        $this->Users = TableRegistry::getTableLocator()->get('CakeDC/Users.Users');
         $this->fullBaseBackup = Router::fullBaseUrl();
         Router::fullBaseUrl('http://users.test');
         Email::setConfigTransport('test', [
             'className' => 'Debug'
         ]);
-        //$this->configEmail = Email::getConfig('default');
         Email::setConfig('default', [
             'transport' => 'test',
             'from' => 'cakedc@example.com'
         ]);
-        $this->Email = new Email(['from' => 'test@example.com', 'transport' => 'test']);
         Plugin::routes('CakeDC/Users');
     }
 
@@ -72,7 +70,6 @@ class UsersTableTest extends TestCase
         Router::fullBaseUrl($this->fullBaseBackup);
         Email::drop('default');
         Email::dropTransport('test');
-        //Email::setConfig('default', $this->configEmail);
 
         parent::tearDown();
     }
@@ -145,12 +142,13 @@ class UsersTableTest extends TestCase
         ];
         $userEntity = $this->Users->newEntity();
         $this->Users->register($userEntity, $user, ['token_expiration' => 3600, 'validate_email' => 1, 'use_tos' => 1]);
-        $this->assertEquals(['tos' => ['_required' => 'This field is required']], $userEntity->errors());
+        $this->assertEquals(['tos' => ['_required' => 'This field is required']], $userEntity->getErrors());
     }
 
     /**
      * Test register method
-    testValidateRegisterValidateEmail     */
+     * testValidateRegisterValidateEmail
+     */
     public function testValidateRegisterNoTosRequired()
     {
         $user = [

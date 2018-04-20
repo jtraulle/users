@@ -19,8 +19,8 @@ use Cake\Core\Configure;
 use Cake\Core\Plugin;
 use Cake\Database\Exception;
 use Cake\Event\Event;
+use Cake\Http\Session;
 use Cake\Network\Request;
-use Cake\Network\Session;
 use Cake\ORM\Entity;
 use Cake\Routing\Exception\MissingRouteException;
 use Cake\Routing\Router;
@@ -56,7 +56,7 @@ class GoogleAuthenticatorComponentTest extends TestCase
             'action' => 'edit'
         ]);
 
-        Security::salt('YJfIxfs2guVoUubWDYhG93b0qyJfIxfs2guwvniR2G0FgaC9mi');
+        Security::setSalt('YJfIxfs2guVoUubWDYhG93b0qyJfIxfs2guwvniR2G0FgaC9mi');
         Configure::write('App.namespace', 'Users');
         Configure::write('Users.GoogleAuthenticator.login', true);
 
@@ -64,7 +64,7 @@ class GoogleAuthenticatorComponentTest extends TestCase
                 ->setMethods(['is', 'method'])
                 ->getMock();
         $this->request->expects($this->any())->method('is')->will($this->returnValue(true));
-        $this->response = $this->getMockBuilder('Cake\Network\Response')
+        $this->response = $this->getMockBuilder('Cake\Http\Response')
                 ->setMethods(['stop'])
                 ->getMock();
         $this->Controller = new Controller($this->request, $this->response);
@@ -93,7 +93,6 @@ class GoogleAuthenticatorComponentTest extends TestCase
      */
     public function testInitialize()
     {
-        $this->Registry->unload('GoogleAuthenticator');
         $this->Controller->GoogleAuthenticator = new GoogleAuthenticatorComponent($this->Registry);
         $this->assertInstanceOf('CakeDC\Users\Controller\Component\GoogleAuthenticatorComponent', $this->Controller->GoogleAuthenticator);
     }

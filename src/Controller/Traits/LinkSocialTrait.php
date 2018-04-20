@@ -11,9 +11,10 @@
 
 namespace CakeDC\Users\Controller\Traits;
 
+use CakeDC\Users\Model\Table\SocialAccountsTable;
 use Cake\Core\Configure;
-use Cake\Network\Exception\NotFoundException;
-use League\OAuth2\Client\Provider\AbstractProvider;
+use Cake\Http\Exception\NotFoundException;
+use League\OAuth1\Client\Server\Twitter;
 
 /**
  * Ações para "linkar" contas sociais
@@ -22,63 +23,108 @@ use League\OAuth2\Client\Provider\AbstractProvider;
 trait LinkSocialTrait
 {
     /**
-     * Ação para inicial processo de link e autenticação social (facebook, google)
+     *  Init link and auth process against provider
      *
      * @param string $alias of the provider.
      *
-     * @throws \Cake\Network\Exception\NotFoundException Quando o provider informado não existe
-     * @return  \Cake\Network\Response Redirects on successful
+     * @throws \Cake\Http\Exception\NotFoundException Quando o provider informado não existe
+     * @return  \Cake\Http\Response Redirects on successful
      */
     public function linkSocial($alias = null)
     {
         $provider = $this->_getSocialProvider($alias);
 
-        $authUrl = $provider->getAuthorizationUrl();
-        $this->request->session()->write('SocialLink.oauth2state', $provider->getState());
+        $temporaryCredentials = [];
+        if (ucfirst($alias) === SocialAccountsTable::PROVIDER_TWITTER) {
+            $temporaryCredentials = $provider->getTemporaryCredentials();
+            $this->request->getSession()->write('temporary_credentials', $temporaryCredentials);
+        }
+        $authUrl = $provider->getAuthorizationUrl($temporaryCredentials);
+        if (empty($temporaryCredentials)) {
+            $this->request->session()->write('SocialLink.oauth2state', $provider->getState());
+        }
 
         return $this->redirect($authUrl);
     }
 
     /**
-     * Ação para receber o retorno do provedor (facebook, google) referente ao
-     *  processo de link e autenticação social
+     * Callback to get user information from provider
      *
      * @param string $alias of the provider.
      *
-     * @throws \Cake\Network\Exception\NotFoundException Quando o provider informado não existe
-     * @return  \Cake\Network\Response Redirects to profile if okay or error
+     * @throws \Cake\Http\Exception\NotFoundException Quando o provider informado não existe
+     * @return  \Cake\Http\Response Redirects to profile if okay or error
      */
     public function callbackLinkSocial($alias = null)
     {
-        $provider = $this->_getSocialProvider($alias);
         $message = __d('CakeDC/Users', 'Could not associate account, please try again.');
-        if (!$this->_validateCallbackSocialLink()) {
+        $provider = $this->_getSocialProvider($alias);
+        $error = false;
+        if (ucfirst($alias) === SocialAccountsTable::PROVIDER_TWITTER) {
+            $server = new Twitter([
+                'identifier' => Configure::read('OAuth.providers.twitter.options.clientId'),
+                'secret' => Configure::read('OAuth.providers.twitter.options.clientSecret'),
+                'callbackUri' => Configure::read('OAuth.providers.twitter.options.callbackLinkSocialUri'),
+            ]);
+            $oauthToken = $this->request->getQuery('oauth_token');
+            $oauthVerifier = $this->request->getQuery('oauth_verifier');
+            if (!empty($oauthToken) && !empty($oauthVerifier)) {
+                $temporaryCredentials = $this->request->getSession()->read('temporary_credentials');
+                try {
+                    $tokenCredentials = $server->getTokenCredentials($temporaryCredentials, $oauthToken, $oauthVerifier);
+                    $data = (array)$server->getUserDetails($tokenCredentials);
+                    $data['token'] = [
+                        'accessToken' => $tokenCredentials->getIdentifier(),
+                        'tokenSecret' => $tokenCredentials->getSecret(),
+                    ];
+                } catch (\Exception $e) {
+                    $error = $e;
+                }
+            }
+        } else {
+            if (!$this->_validateCallbackSocialLink()) {
+                $this->Flash->error($message);
+
+                return $this->redirect(['action' => 'profile']);
+            }
+            $code = $this->request->getQuery('code');
+            try {
+                $token = $provider->getAccessToken('authorization_code', compact('code'));
+
+                $data = compact('token') + $provider->getResourceOwner($token)->toArray();
+            } catch (\Exception $e) {
+                $error = $e;
+            }
+        }
+
+        if (!empty($error) || empty($data)) {
+            $log = sprintf(
+                "Error getting an access token. Error message: %s %s",
+                $error->getMessage(),
+                $error
+            );
+            $this->log($log);
+
             $this->Flash->error($message);
 
             return $this->redirect(['action' => 'profile']);
         }
 
-        $code = $this->request->getQuery('code');
-
         try {
-            $token = $provider->getAccessToken('authorization_code', compact('code'));
-
-            $data = compact('token') + $provider->getResourceOwner($token)->toArray();
-
             $data = $this->_mapSocialUser($alias, $data);
 
             $user = $this->getUsersTable()->get($this->Auth->user('id'));
 
             $this->getUsersTable()->linkSocialAccount($user, $data);
 
-            if ($user->errors()) {
+            if ($user->getErrors()) {
                 $this->Flash->error($message);
             } else {
                 $this->Flash->success(__d('CakeDC/Users', 'Social account was associated.'));
             }
         } catch (\Exception $e) {
             $log = sprintf(
-                "Error getting an access token / retrieving the authorized user's profile data. Error message: %s %s",
+                "Error retrieving the authorized user's profile data. Error message: %s %s",
                 $e->getMessage(),
                 $e
             );
@@ -115,8 +161,8 @@ trait LinkSocialTrait
      *
      * @param string $alias of the provider.
      *
-     * @throws \Cake\Network\Exception\NotFoundException
-     * @return \League\OAuth2\Client\Provider\AbstractProvider
+     * @throws \Cake\Http\Exception\NotFoundException
+     * @return \League\OAuth2\Client\Provider\AbstractProvider|\League\OAuth1\Client\Server\Twitter
      */
     protected function _getSocialProvider($alias)
     {
@@ -129,19 +175,29 @@ trait LinkSocialTrait
             throw new NotFoundException;
         }
 
-        return $this->_createSocialProvider($config);
+        return $this->_createSocialProvider($config, ucfirst($alias));
     }
 
     /**
      * Instantiates provider object.
      *
      * @param array $config for social provider.
+     * @param string $alias provider alias
      *
-     * @throws \Cake\Network\Exception\NotFoundException
-     * @return \League\OAuth2\Client\Provider\AbstractProvider
+     * @throws \Cake\Http\Exception\NotFoundException
+     * @return \League\OAuth2\Client\Provider\AbstractProvider|\League\OAuth1\Client\Server\Twitter
      */
-    protected function _createSocialProvider($config)
+    protected function _createSocialProvider($config, $alias = null)
     {
+        if ($alias === SocialAccountsTable::PROVIDER_TWITTER) {
+            $server = new Twitter([
+                'identifier' => Configure::read('OAuth.providers.twitter.options.clientId'),
+                'secret' => Configure::read('OAuth.providers.twitter.options.clientSecret'),
+                'callback_uri' => Configure::read('OAuth.providers.twitter.options.callbackLinkSocialUri'),
+            ]);
+
+            return $server;
+        }
         $class = $config['className'];
         $redirectUri = $config['options']['callbackLinkSocialUri'];
 
@@ -160,6 +216,7 @@ trait LinkSocialTrait
     protected function _validateCallbackSocialLink()
     {
         $queryParams = $this->request->getQueryParams();
+
         if (isset($queryParams['error']) && !empty($queryParams['error'])) {
             $this->log('Got error in _validateCallbackSocialLink: ' . htmlspecialchars($queryParams['error'], ENT_QUOTES, 'UTF-8'));
 

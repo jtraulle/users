@@ -39,7 +39,7 @@
         'action' => ['edit', 'delete'],
         'allowed' => function(array $user, $role, Request $request) {
             $postId = Hash::get($request->params, 'pass.0');
-            $post = TableRegistry::get('Posts')->get($postId);
+            $post = TableRegistry::getTableLocator()->get('Posts')->get($postId);
             $userId = Hash::get($user, 'id');
             if (!empty($post->user_id) && !empty($userId)) {
                 return $post->user_id === $userId;
@@ -50,7 +50,7 @@
  */
 
 return [
-    'Users.SimpleRbac.permissions' => [
+    'CakeDC/Auth.permissions' => [
         //admin role allowed to all the things
         [
             'role' => 'admin',
@@ -65,7 +65,7 @@ return [
             'role' => '*',
             'plugin' => 'CakeDC/Users',
             'controller' => 'Users',
-            'action' => ['profile', 'logout'],
+            'action' => ['profile', 'logout', 'linkSocial', 'callbackLinkSocial'],
         ],
         [
             'role' => '*',
@@ -84,7 +84,6 @@ return [
         //all roles allowed to Pages/display
         [
             'role' => '*',
-            //'plugin' => null,
             'controller' => 'Pages',
             'action' => 'display',
         ],
