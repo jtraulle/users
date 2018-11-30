@@ -57,7 +57,6 @@ class UserHelperTest extends TestCase
         }
 
         parent::setUp();
-        Plugin::routes('CakeDC/Users');
         $this->View = $this->getMockBuilder('Cake\View\View')
                 ->setMethods(['append'])
                 ->getMock();
@@ -190,8 +189,11 @@ class UserHelperTest extends TestCase
     public function testAddReCaptcha()
     {
         Configure::write('Users.reCaptcha.key', 'testKey');
+        Configure::write('Users.reCaptcha.theme', 'light');
+        Configure::write('Users.reCaptcha.size', 'normal');
+        Configure::write('Users.reCaptcha.tabindex', '3');
         $result = $this->User->addReCaptcha();
-        $this->assertEquals('<div class="g-recaptcha" data-sitekey="testKey"></div>', $result);
+        $this->assertEquals('<div class="g-recaptcha" data-sitekey="testKey" data-theme="light" data-size="normal" data-tabindex="3"></div>', $result);
     }
 
     /**

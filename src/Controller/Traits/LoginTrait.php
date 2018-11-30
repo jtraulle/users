@@ -11,6 +11,7 @@
 
 namespace CakeDC\Users\Controller\Traits;
 
+use CakeDC\Users\Auth\TwoFactorAuthenticationCheckerFactory;
 use CakeDC\Users\Controller\Component\UsersAuthComponent;
 use CakeDC\Users\Exception\AccountNotActiveException;
 use CakeDC\Users\Exception\MissingEmailException;
@@ -171,7 +172,6 @@ trait LoginTrait
         }
 
         $socialLogin = $this->_isSocialLogin();
-        $googleAuthenticatorLogin = $this->_isGoogleAuthenticator();
 
         if ($this->request->is('post')) {
             if (!$this->_checkReCaptcha()) {
@@ -181,7 +181,11 @@ trait LoginTrait
             }
             $user = $this->Auth->identify();
 
-            return $this->_afterIdentifyUser($user, $socialLogin, $googleAuthenticatorLogin);
+            return $this->_afterIdentifyUser(
+                $user,
+                $socialLogin,
+                $user && $this->getTwoFactorAuthenticationChecker()->isRequired($user)
+            );
         }
 
         if (!$this->request->is('post') && !$socialLogin) {
@@ -211,27 +215,28 @@ trait LoginTrait
      */
     public function verify()
     {
-        if (!Configure::read('Users.GoogleAuthenticator.login')) {
+        $loginUrl = array_merge(
+            Configure::read('Auth.loginAction'),
+            [
+                '?' => $this->request->getQueryParams()
+            ]
+        );
+        if (!$this->getTwoFactorAuthenticationChecker()->isEnabled()) {
             $message = __d('CakeDC/Users', 'Please enable Google Authenticator first.');
             $this->Flash->error($message, 'default', [], 'auth');
 
-            return $this->redirect(Configure::read('Auth.loginAction'));
+            return $this->redirect($loginUrl);
         }
 
-        // storing user's session in the temporary one
-        // until the GA verification is checked
-        $temporarySession = $this->Auth->user();
-        $this->request->getSession()->delete('Auth.User');
+        $temporarySession = $this->request->getSession()->read('temporarySession');
+        if (!is_array($temporarySession) || empty($temporarySession)) {
+            $this->Flash->error(__d('CakeDC/Users', 'Invalid request.'), 'default', [], 'auth');
 
-        if (!empty($temporarySession)) {
-            $this->request->getSession()->write('temporarySession', $temporarySession);
+            return $this->redirect($loginUrl);
         }
 
-        if (array_key_exists('secret', $temporarySession)) {
-            $secret = $temporarySession['secret'];
-        }
-
-        $secretVerified = Hash::get((array)$temporarySession, 'secret_verified');
+        $secret = Hash::get($temporarySession, 'secret');
+        $secretVerified = Hash::get($temporarySession, 'secret_verified');
 
         // showing QR-code until shared secret is verified
         if (!$secretVerified) {
@@ -245,12 +250,14 @@ trait LoginTrait
                         ->set(['secret' => $secret])
                         ->where(['id' => $temporarySession['id']]);
                     $query->execute();
+
+                    $this->request->getSession()->write('temporarySession.secret', $secret);
                 } catch (\Exception $e) {
                     $this->request->getSession()->destroy();
                     $message = $e->getMessage();
                     $this->Flash->error($message, 'default', [], 'auth');
 
-                    return $this->redirect(Configure::read('Auth.loginAction'));
+                    return $this->redirect($loginUrl);
                 }
             }
             $secretDataUri = $this->GoogleAuthenticator->getQRCodeImageAsDataUri(
@@ -278,10 +285,16 @@ trait LoginTrait
                         ->set(['secret_verified' => true])
                         ->where(['id' => $user['id']])
                         ->execute();
+
+                    $user['secret_verified'] = true;
                 }
 
                 $this->request->getSession()->delete('temporarySession');
-                $this->request->getSession()->write('Auth.User', $user);
+                $this->Auth->setUser($user);
+                $event = $this->dispatchEvent(UsersAuthComponent::EVENT_AFTER_LOGIN, ['user' => $user]);
+                if (is_array($event->result)) {
+                    return $this->redirect($event->result);
+                }
                 $url = $this->Auth->redirectUrl();
 
                 return $this->redirect($url);
@@ -290,7 +303,7 @@ trait LoginTrait
                 $message = __d('CakeDC/Users', 'Verification code is invalid. Try again');
                 $this->Flash->error($message, 'default', [], 'auth');
 
-                return $this->redirect(Configure::read('Auth.loginAction'));
+                return $this->redirect($loginUrl);
             }
         }
     }
@@ -322,14 +335,19 @@ trait LoginTrait
     protected function _afterIdentifyUser($user, $socialLogin = false, $googleAuthenticatorLogin = false)
     {
         if (!empty($user)) {
-            $this->Auth->setUser($user);
-
             if ($googleAuthenticatorLogin) {
+                // storing user's session in the temporary one
+                // until the GA verification is checked
+                $this->request->getSession()->write('temporarySession', $user);
                 $url = Configure::read('GoogleAuthenticator.verifyAction');
+                $url = array_merge($url, [
+                    '?' => $this->request->getQueryParams()
+                ]);
 
                 return $this->redirect($url);
             }
 
+            $this->Auth->setUser($user);
             $event = $this->dispatchEvent(UsersAuthComponent::EVENT_AFTER_LOGIN, ['user' => $user]);
             if (is_array($event->result)) {
                 return $this->redirect($event->result);
@@ -386,11 +404,12 @@ trait LoginTrait
     }
 
     /**
-     * Check if we doing Google Authenticator Two Factor auth
-     * @return bool true if Google Authenticator is enabled
+     * Get the configured two factory authentication
+     *
+     * @return \CakeDC\Users\Auth\TwoFactorAuthenticationCheckerInterface
      */
-    protected function _isGoogleAuthenticator()
+    protected function getTwoFactorAuthenticationChecker()
     {
-        return Configure::read('Users.GoogleAuthenticator.login');
+        return (new TwoFactorAuthenticationCheckerFactory())->build();
     }
 }
